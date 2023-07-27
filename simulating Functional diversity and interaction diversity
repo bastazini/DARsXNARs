@@ -1,0 +1,103 @@
+# Load required packages
+#install.packages("igraph") # Only if you haven't installed the 'igraph' package
+library(igraph)
+
+# Set the number of simulations
+num_simulations <- 10
+
+# Set the range of patch sizes
+patch_sizes <- seq(10, 100, by = 10)
+
+# Set the initial number of species
+initial_species <- 10
+
+# Set the range of functional trait redundancy
+functional_redundancy <- c(0, 0.25, 0.5, 0.75, 0.9)
+
+# Function to simulate species richness based on power law with area
+simulate_species_richness <- function(area, slope, initial_richness) {
+  species_richness <- initial_richness * area^slope
+  return(round(species_richness))
+}
+
+# Function to simulate morphological traits for each species
+simulate_traits <- function(num_species) {
+  # Assuming there are three traits, you can modify this as needed
+  traits <- data.frame(trait1 = rnorm(num_species),
+                       trait2 = rnorm(num_species),
+                       trait3 = rnorm(num_species))
+  return(traits)
+}
+
+# Function to create a trait matching rule based on functional redundancy
+trait_matching_rule <- function(traits1, traits2) {
+  # Calculate the Euclidean distance between traits for each pair of species
+  distances <- sqrt(rowSums((traits1 - traits2)^2))
+  # Create an interaction matrix based on trait matching
+  interaction_matrix <- distances 
+  return(interaction_matrix)
+}
+
+# Empty list to store the results for each simulation
+simulation_results <- list()
+
+# Start the simulations
+for (sim in 1:num_simulations) {
+  sim_results <- data.frame()
+  
+  # Start the simulations
+  for (sim in 1:num_simulations) {
+    sim_results <- data.frame()
+    
+    for (size in patch_sizes) {
+      for (redundancy in functional_redundancy) {
+        # Step 1: Simulate patches
+        patch_area <- size
+      
+      # Step 2: Simulate species richness for plants and pollinators
+      plant_richness <- simulate_species_richness(patch_area, 0.25, initial_species)
+      pollinator_richness <- simulate_species_richness(patch_area, 0.25, initial_species)
+      
+      # Step 3: Simulate morphological traits for plants and pollinators
+      plant_traits <- abs(simulate_traits(plant_richness))
+      pollinator_traits <- abs(simulate_traits(pollinator_richness))
+      
+      # Step 4: Create the interaction network based on trait matching
+      interaction_matrix <- trait_matching_rule(plant_traits, pollinator_traits, redundancy)
+      
+      # Ensure that there are interactions between plants and pollinators
+      while (sum(interaction_matrix) == 0) {
+        # If no interactions, re-simulate traits until we have interactions
+        plant_traits <- simulate_traits(plant_richness)
+        pollinator_traits <- simulate_traits(pollinator_richness)
+        interaction_matrix <- trait_matching_rule(plant_traits, pollinator_traits, redundancy)
+      }
+      
+      # Step 5: Calculate functional diversity and number of interactions
+      #functional_diversity <- if (nrow(plant_traits) > 0) sum(apply(interaction_matrix, 1, any)) else 0
+      num_interactions <- sum(interaction_matrix) 
+      
+      # Step 6: Store the results in the data frame
+      result_row <- data.frame(#Functional_Diversity = functional_diversity,
+                               Functional_Redundancy = redundancy,
+                               Patch_Size = patch_area,
+                               Num_Plant_Species = plant_richness,
+                               Num_Pollinator_Species = pollinator_richness,
+                               Num_Interactions = num_interactions)
+      
+      sim_results <- rbind(sim_results, result_row)
+    }
+  }
+  
+  # Store the results for this simulation in the list
+  simulation_results[[sim]] <- sim_results
+}
+
+# Combine all simulation results into one data frame
+all_results <- do.call(rbind, simulation_results)
+
+# Step 7: Save the data frame as a CSV file
+write.csv(all_results, "simulation_results.csv", row.names = FALSE)
+
+# View the results
+print(all_results)
